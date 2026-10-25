@@ -8,7 +8,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use maud::html;
 use sqlx::PgPool;
-use tower_http::services::ServeDir;
+use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber;
 
 mod admin;
@@ -49,7 +49,7 @@ async fn home(cookies: CookieJar) -> Response {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_max_level(tracing::Level::DEBUG)
         .init();
 
     let secret_store = std::env::vars().collect::<HashMap<_, _>>();
@@ -110,7 +110,8 @@ async fn main() {
         .nest("/admin", admin::router(state.clone()))
         .nest("/.webconnex", webconnex::router(state.clone()))
         .nest("/.donorbox", donorbox::router(state.clone()))
-        .nest_service("/assets", ServeDir::new("static"));
+        .nest_service("/assets", ServeDir::new("static"))
+        .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:80").await.unwrap();
     axum::serve(listener, router).await.unwrap();
