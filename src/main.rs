@@ -9,6 +9,7 @@ use axum_extra::extract::CookieJar;
 use maud::html;
 use sqlx::PgPool;
 use tower_http::services::ServeDir;
+use tracing_subscriber;
 
 mod admin;
 mod auth;
@@ -47,15 +48,16 @@ async fn home(cookies: CookieJar) -> Response {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
     let secret_store = std::env::vars().collect::<HashMap<_, _>>();
     let db_pool = PgPool::connect(std::env::var("POSTGRES_DATABASE").as_ref().unwrap())
         .await
         .unwrap();
     sqlx::migrate!().run(&db_pool).await.unwrap();
 
-    // tracing_subscriber::fmt()
-    //     .with_max_level(tracing::Level::DEBUG)
-    //     .init();
 
     let google_oauth = auth::oauth_client(
         secret_store.get("GOOGLE_OAUTH_CLIENT_ID").unwrap().clone(),
